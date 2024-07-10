@@ -164,6 +164,8 @@ NCertRes NViewCertClass::checkOptimality(const Eigen::VectorXd & sol,
         
         res.time_mult = (double) time_mult.count(); 
         res.time_hess = (double) time_hess.count();
+
+        printResult( res );
         
         if (debug_)
         {

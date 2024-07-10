@@ -8,6 +8,8 @@
 #include <string>
 #include <iostream>
 #include <iomanip>
+#include <random>
+#include "../include/definitions.hpp"
 
 #define PI 3.1415927
 
@@ -15,21 +17,24 @@ namespace NViewsTrian
 {
 
 
-Vector3 addNoise(double noise, double focal, size_t size_img, Vector3& obs);
-
+Vector3 addNoise(int rand_seed, double noise, double focal, size_t size_img, Vector3& obs);
 
 PCRes generatePointCloud(PCParams & options, 
-                        const GenerateTranslation& generateTranslation, 
-                        const GenerateRotation& generateRotation,
-                        const PerturbTranslation& perturbTranslation, 
-                        const PerturbRotation& perturbRotation)
+                         const GenerateTranslation& generateTranslation, 
+                         const GenerateRotation& generateRotation,
+                         const PerturbTranslation& perturbTranslation, 
+                         const PerturbRotation& perturbRotation)
 {
         
         // std::cout << "[PC] Creating output struct\n"; 
         PCRes res = PCRes(options.N_points);
         
+        int rand_seed = 0;
+#if FIX_RANDOMNESS
+#else
+        srand(time(NULL));
+#endif
         /** 1. GENERATE POINT CLOUD **/
-        
         res.points_3D.setZero();
         
         for (int i = 0; i < options.N_points; i++)
@@ -41,6 +46,10 @@ PCRes generatePointCloud(PCParams & options,
                 /* For X component */
                 while ((!coord_ok) && (n_iter < options.max_iter))
                 {
+#if FIX_RANDOMNESS
+                        srand(rand_seed);
+                        rand_seed++;
+#endif
                         px = ((((double) rand()) / ((double) RAND_MAX)) - 0.5) * options.std_pc * 2.0;
                         
                         if ((px <= options.max_side * 0.5) && (-options.max_side * 0.5 <= px)) 
@@ -62,6 +71,10 @@ PCRes generatePointCloud(PCParams & options,
                 coord_ok = false;
                 while ((!coord_ok) && (n_iter < options.max_iter))
                 {
+#if FIX_RANDOMNESS
+                        srand(rand_seed);
+                        rand_seed++;
+#endif
                         py = ((((double) rand()) / ((double) RAND_MAX)) - 0.5) * options.std_pc * 2.0;
                         
                         if ((py <= options.max_side * 0.5) && (-options.max_side * 0.5 <= py)) 
@@ -84,6 +97,10 @@ PCRes generatePointCloud(PCParams & options,
                 coord_ok = false;
                 while ((!coord_ok) && (n_iter < options.max_iter))
                 {
+#if FIX_RANDOMNESS
+                        srand(rand_seed);
+                        rand_seed++;
+#endif
                         pz = (((double) rand()) / ((double) RAND_MAX) - 0.5) * 2.0 * options.std_pc + options.dist_center;
                         
                         if (pz >= 0) 
@@ -114,19 +131,21 @@ PCRes generatePointCloud(PCParams & options,
                 /** 2. GENERATE POSE **/
                 // a. Generate relative pose 
 
-                Vector3 translation = generateTranslation(options.max_parallax, options.dir_parallax); 
+                Vector3 translation = generateTranslation(rand_seed, options.max_parallax, options.dir_parallax);
+                rand_seed++; 
 
-                Matrix3 rotation = generateRotation(options.max_angle, options.dir_rotation, translation); 
+                Matrix3 rotation = generateRotation(rand_seed, options.max_angle, options.dir_rotation, translation); 
+                rand_seed++;
 
                 // b. Perturb pose 
-                translation = perturbTranslation(options.noise_trans, translation); 
+                translation = perturbTranslation(rand_seed, options.noise_trans, translation); 
+                rand_seed++;
                 
-                rotation = perturbRotation(options.noise_rot, rotation); 
-                
+                rotation = perturbRotation(rand_seed, options.noise_rot, rotation); 
+                rand_seed++;
               
                 res.set_rot.push_back(rotation); 
                 res.set_trans.push_back(translation);
-        
         }
         
         
@@ -149,8 +168,8 @@ PCRes generatePointCloud(PCParams & options,
                                                
                 
                         // add noise 
-                        Vector3 obs_noisy = addNoise(options.noise, options.focal_length, options.size_img, qj); 
-                        
+                        Vector3 obs_noisy = addNoise(rand_seed, options.noise, options.focal_length, options.size_img, qj); 
+                        rand_seed++;
                         
                         // save data 
                         obs_i.col(j) = obs_noisy;
@@ -163,9 +182,7 @@ PCRes generatePointCloud(PCParams & options,
         return res;
 }  // end of function 
 
-
-
-Vector3 addNoise(double noise, double focal, size_t size_img, Vector3& obs)
+Vector3 addNoise(int rand_seed, double noise, double focal, size_t size_img, Vector3& obs)
 {
         Vector3 noisy_obs = obs; 
         
@@ -180,125 +197,157 @@ Vector3 addNoise(double noise, double focal, size_t size_img, Vector3& obs)
         K(1,2) = (double)size_img; 
         Vector3 obs_no_noise = K * noisy_obs; 
         noisy_obs = obs_no_noise; 
-        
-        noisy_obs(0) += (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * noise;
-        noisy_obs(1) += (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * noise;
 
+#if FIX_RANDOMNESS
+        srand(rand_seed);
+#endif
+        noisy_obs(0) += (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * noise;
+#if FIX_RANDOMNESS
+        srand(rand_seed + 36);
+#endif
+        noisy_obs(1) += (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * noise;
 
         return noisy_obs;
 }
 
 
-Vector3 generateRandomVector(double std_vec)
+Vector3 generateRandomVector(int rand_seed, double std_vec)
 {
-        Vector3 v;
-        v.setZero(); 
-        v(0) = (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * std_vec; 
-        v(1) = (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * std_vec; 
-        v(2) = (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * std_vec; 
-        v.normalize();
-        
-        return v; 
+    Vector3 v;
+    v.setZero(); 
+
+#if FIX_RANDOMNESS
+     srand(rand_seed);
+#endif
+    v(0) = (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * std_vec;
+
+#if FIX_RANDOMNESS
+    srand(rand_seed + 99);
+#endif
+    v(1) = (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * std_vec; 
+
+#if FIX_RANDOMNESS
+    srand(rand_seed + 69);
+#endif
+    v(2) = (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * std_vec; 
+
+    v.normalize();
+    return v; 
 }
 
-Matrix3 generateRotationRodrigues(double max_angle, const Vector3 & dir_r)
+Matrix3 generateRotationRodrigues(int rand_seed, double max_angle, const Vector3 & dir_r)
 {
-                double angle = max_angle * (((double) rand())/ ((double) RAND_MAX)-0.5)*2.0;
+#if FIX_RANDOMNESS
+        srand(rand_seed);
+#endif
+        double angle = max_angle * (((double) rand())/ ((double) RAND_MAX)-0.5)*2.0;
+        
+        Matrix3 rot; 
+        Vector3 dir_rot = dir_r.normalized();
+        Matrix3 T; 
+        // cross matrix
+        T << 0, -dir_rot(2), dir_rot(1), 
+                dir_rot(2), 0, -dir_rot(0), 
+                -dir_rot(1), dir_rot(0), 0;
+        
+        rot = Matrix3::Identity() + sin(angle) * T + (1 - cos(angle)) * T * T;
                 
-                Matrix3 rot; 
-                Vector3 dir_rot = dir_r.normalized();
-                Matrix3 T; 
-                // cross matrix
-                T << 0, -dir_rot(2), dir_rot(1), 
-                     dir_rot(2), 0, -dir_rot(0), 
-                     -dir_rot(1), dir_rot(0), 0;
-                
-                rot = Matrix3::Identity() + sin(angle) * T + (1 - cos(angle)) * T * T;
-                       
-                return rot;
+        return rot;
 }
 
 
 // generate random translation with the specified norm
-Vector3 generateRandomTranslationDefault( double max_parallax, const Vector3 & dir_parallax)
+Vector3 generateRandomTranslationDefault( int rand_seed, double max_parallax, const Vector3 & dir_parallax)
 {
+#if FIX_RANDOMNESS
+        srand(rand_seed);
+#endif
         double par_rnd = (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * max_parallax;
-        return (par_rnd * generateRandomVector(1.0));
+        rand_seed++;
+        return (par_rnd * generateRandomVector(rand_seed, 1.0));
 
 }
-Matrix3 generateRandomRotation( double maxAngle )
-        {
-          
-          Vector3 rpy;
-          rpy[0] = ((double) std::rand())/ ((double) RAND_MAX);
-          rpy[1] = ((double) std::rand())/ ((double) RAND_MAX);
-          rpy[2] = ((double) std::rand())/ ((double) RAND_MAX);
+Matrix3 generateRandomRotation( int rand_seed, double maxAngle )
+{
+        Vector3 rpy;
 
-          rpy[0] = maxAngle*2.0*(rpy[0]-0.5);
-          rpy[1] = maxAngle*2.0*(rpy[1]-0.5);
-          rpy[2] = maxAngle*2.0*(rpy[2]-0.5);
+#if FIX_RANDOMNESS
+    srand(rand_seed);
+#endif
+        rpy[0] = ((double) std::rand())/ ((double) RAND_MAX);
+#if FIX_RANDOMNESS
+    srand(rand_seed + 66);
+#endif
+        rpy[1] = ((double) std::rand())/ ((double) RAND_MAX);
 
-          Matrix3 R1;
-          R1(0,0) = 1.0;
-          R1(0,1) = 0.0;
-          R1(0,2) = 0.0;
-          R1(1,0) = 0.0;
-          R1(1,1) = cos(rpy[0]);
-          R1(1,2) = -sin(rpy[0]);
-          R1(2,0) = 0.0;
-          R1(2,1) = -R1(1,2);
-          R1(2,2) = R1(1,1);
+#if FIX_RANDOMNESS
+    srand(rand_seed + 88);
+#endif
+        rpy[2] = ((double) std::rand())/ ((double) RAND_MAX);
 
-          Matrix3 R2;
-          R2(0,0) = cos(rpy[1]);
-          R2(0,1) = 0.0;
-          R2(0,2) = sin(rpy[1]);
-          R2(1,0) = 0.0;
-          R2(1,1) = 1.0;
-          R2(1,2) = 0.0;
-          R2(2,0) = -R2(0,2);
-          R2(2,1) = 0.0;
-          R2(2,2) = R2(0,0);
+        rpy[0] = maxAngle*2.0*(rpy[0]-0.5);
+        rpy[1] = maxAngle*2.0*(rpy[1]-0.5);
+        rpy[2] = maxAngle*2.0*(rpy[2]-0.5);
 
-          Matrix3 R3;
-          R3(0,0) = cos(rpy[2]);
-          R3(0,1) = -sin(rpy[2]);
-          R3(0,2) = 0.0;
-          R3(1,0) =-R3(0,1);
-          R3(1,1) = R3(0,0);
-          R3(1,2) = 0.0;
-          R3(2,0) = 0.0;
-          R3(2,1) = 0.0;
-          R3(2,2) = 1.0;
+        Matrix3 R1;
+        R1(0,0) = 1.0;
+        R1(0,1) = 0.0;
+        R1(0,2) = 0.0;
+        R1(1,0) = 0.0;
+        R1(1,1) = cos(rpy[0]);
+        R1(1,2) = -sin(rpy[0]);
+        R1(2,0) = 0.0;
+        R1(2,1) = -R1(1,2);
+        R1(2,2) = R1(1,1);
 
-          Matrix3 rotation = R3 * R2 * R1;
+        Matrix3 R2;
+        R2(0,0) = cos(rpy[1]);
+        R2(0,1) = 0.0;
+        R2(0,2) = sin(rpy[1]);
+        R2(1,0) = 0.0;
+        R2(1,1) = 1.0;
+        R2(1,2) = 0.0;
+        R2(2,0) = -R2(0,2);
+        R2(2,1) = 0.0;
+        R2(2,2) = R2(0,0);
 
-          rotation.col(0) = rotation.col(0) / rotation.col(0).norm();
-          rotation.col(2) = rotation.col(0).cross(rotation.col(1));
-          rotation.col(2) = rotation.col(2) / rotation.col(2).norm();
-          rotation.col(1) = rotation.col(2).cross(rotation.col(0));
-          rotation.col(1) = rotation.col(1) / rotation.col(1).norm();
-          return rotation;
-        }
+        Matrix3 R3;
+        R3(0,0) = cos(rpy[2]);
+        R3(0,1) = -sin(rpy[2]);
+        R3(0,2) = 0.0;
+        R3(1,0) =-R3(0,1);
+        R3(1,1) = R3(0,0);
+        R3(1,2) = 0.0;
+        R3(2,0) = 0.0;
+        R3(2,1) = 0.0;
+        R3(2,2) = 1.0;
+
+        Matrix3 rotation = R3 * R2 * R1;
+
+        rotation.col(0) = rotation.col(0) / rotation.col(0).norm();
+        rotation.col(2) = rotation.col(0).cross(rotation.col(1));
+        rotation.col(2) = rotation.col(2) / rotation.col(2).norm();
+        rotation.col(1) = rotation.col(2).cross(rotation.col(0));
+        rotation.col(1) = rotation.col(1) / rotation.col(1).norm();
+        return rotation;
+}
 
 
 
 // generate random rotation with maxAngle
-Matrix3 generateRandomRotationDefault( double max_angle, const Vector3 & dir_rot, const Vector3 & trans)
+Matrix3 generateRandomRotationDefault( int rand_seed, double max_angle, const Vector3 & dir_rot, const Vector3 & trans)
 {
-      
-        
-        return (generateRandomRotation( max_angle ));         
-
+        return (generateRandomRotation( rand_seed, max_angle ));
 } 
 
 // generate orbital rotation with maxAngle
-Matrix3 generateOrbitalRotation( double d, const Vector3 & dir_rot, const Vector3 & trans)
+Matrix3 generateOrbitalRotation( int rand_seed, double d, const Vector3 & dir_rot, const Vector3 & trans)
 {
         // here: 
         // d: distance to center point cloud 
         // trans: translation vector
         // compute angle
+        //> input argument rand_seed is not in use, but is required for function namespace
         Vector3 d_c; 
         d_c << 0, 0, d; 
         
@@ -310,16 +359,20 @@ Matrix3 generateOrbitalRotation( double d, const Vector3 & dir_rot, const Vector
         Matrix3 R = Matrix3::Identity(); 
         R(0, 0) = cos(theta); 
         R(0, 2) = sin(theta); 
-        R(2, 0) = - sin(theta); 
+        R(2, 0) = -sin(theta); 
         R(2, 2) = cos(theta); 
         
-        return (R);         
-
+        return (R);
 } 
 
-Vector3 generateOrbitalTranslation( double max_parallax, const Vector3 & dir_parallax)
+Vector3 generateOrbitalTranslation( int rand_seed, double max_parallax, const Vector3 & dir_parallax)
 {
         // here max parallax is the radius of the circle
+#if FIX_RANDOMNESS
+        srand(rand_seed);
+#else
+        srand(time(NULL));
+#endif
         double angle_in_circle =  (((double) rand()) / ((double) RAND_MAX)-0.5)* 2 * PI;
         
         double x_c = cos(angle_in_circle) * max_parallax; 
@@ -328,27 +381,36 @@ Vector3 generateOrbitalTranslation( double max_parallax, const Vector3 & dir_par
         trans << x_c, 0, dir_parallax(0) + z_c; 
         
         return (trans);
-
 }; 
 
 
 // generate random perturbation for translation 
-Vector3 perturbRandomTranslationDefault( double noise, const Vector3 & trans)
+Vector3 perturbRandomTranslationDefault( int rand_seed, double noise, const Vector3 & trans)
 {
-        double n_trans = trans.norm(); 
-        
+        double n_trans = trans.norm();        
         Vector3 res = trans; 
+
         // perturbation 
+#if FIX_RANDOMNESS
+        srand(rand_seed);
+#endif
         res(0) +=  (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * noise;
+
+#if FIX_RANDOMNESS
+        srand(rand_seed + 22);
+#endif
         res(1) +=  (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * noise;
+#if FIX_RANDOMNESS
+        srand(rand_seed + 44);
+#endif
         res(2) +=  (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0 * noise;
         
         return (n_trans * res.normalized());
 }
 // generate random perturbation for translation 
-Matrix3 perturbRandomRotationDefault( double noise, const Matrix3 & rot)
+Matrix3 perturbRandomRotationDefault( int rand_seed, double noise, const Matrix3 & rot)
 {
-     Matrix3 noise_rot = generateRandomRotation(noise); 
+     Matrix3 noise_rot = generateRandomRotation(rand_seed, noise); 
      
      return (noise_rot * rot);
 }
@@ -363,10 +425,15 @@ Vector3 generateTranslationForward( double max_parallax, const Vector3 & dir_par
 
 }; 
 
-Vector3 generateTranslationStereo( double max_parallax, const Vector3 & dir_parallax)
+Vector3 generateTranslationStereo( int rand_seed, double max_parallax, const Vector3 & dir_parallax)
 {
-        Vector3 t; 
-        
+        Vector3 t;
+#if FIX_RANDOMNESS
+        srand(rand_seed);
+#else
+        srand(time(NULL));
+#endif
+
         double par_rnd = (((double) rand()) / ((double) RAND_MAX)-0.5)*max_parallax; 
         t << par_rnd, 0, 0; 
         
@@ -375,10 +442,17 @@ Vector3 generateTranslationStereo( double max_parallax, const Vector3 & dir_para
 }; 
 
 
-Vector3 generateTranslationSideways( double max_parallax, const Vector3 & dir_parallax)
+Vector3 generateTranslationSideways( int rand_seed, double max_parallax, const Vector3 & dir_parallax)
 {
-        Vector3 t; 
+        Vector3 t;
+
+#if FIX_RANDOMNESS
+        srand(rand_seed);
+#endif
         t(0) = (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0; 
+#if FIX_RANDOMNESS
+        srand(rand_seed + 100);
+#endif
         t(1) = (((double) rand()) / ((double) RAND_MAX)-0.5)*2.0; 
         t(2) = 0; 
         t.normalize(); 
@@ -387,8 +461,9 @@ Vector3 generateTranslationSideways( double max_parallax, const Vector3 & dir_pa
 
 }; 
 
-Vector3 generateTranslationOblique( double max_parallax, const Vector3 & dir_parallax)
+Vector3 generateTranslationOblique( int rand_seed, double max_parallax, const Vector3 & dir_parallax)
 {
+        //> input argument rand_seed is not in use, but is required for function namespace
         Vector3 t;
         t << 1, 1, 1; 
         t.normalize(); 
@@ -397,11 +472,11 @@ Vector3 generateTranslationOblique( double max_parallax, const Vector3 & dir_par
 
 }; 
 
-int generateM2Comb(const int M,
-                      Eigen::MatrixXd & comb_idx)
+//> Generate N choose 2 constraints. M is the number of cameras.
+int generateM2Comb(const int M, Eigen::MatrixXd & comb_idx)
 {
         // probably not the best way
-        int M_comb = M * (M-1) / 2;  
+        int M_comb = M * (M-1) / 2;
         comb_idx.resize(2, M_comb); 
         comb_idx.setZero();
         int col_id = 0; 

@@ -14,6 +14,8 @@
 #include "NViewsCertifier.h"
 
 #include <chrono>  // timer
+#include <cstring>
+#include "../include/definitions.hpp"
 
 using namespace std::chrono;
 
@@ -23,24 +25,23 @@ namespace NViewsTrian
 void NViewsClass::createProblemMatrices(const std::vector<PairObj> & obj,
                                         const int N_cams)
 {
-  
         constr_red_.empty(); 
         
         M_ = obj.size();
         N_cams_ = N_cams;
         int s_constr = 2 * N_cams_ + 1;
-        for (int i=0; i<M_; i++)
+
+        //> M_ is the # of constraints
+        for (int i = 0; i < M_; i++)
         {       
                 Matrix3 F = obj[i].F; 
                 Vector3 p1 = obj[i].p1; 
-                Vector3 p2 = obj[i].p2;      
+                Vector3 p2 = obj[i].p2; 
                 Vector3 Fp2 = F.transpose() * p2; 
                 Vector3 Fp1 = F * p1; 
                 double e_ep = p2.dot(F * p1);
                 int id_1 = (obj[i].id1) * 2; 
                 int id_2 = (obj[i].id2) * 2; 
-                
-               
                 
                 // create struct
                 Constr2View ci; 
@@ -48,14 +49,19 @@ void NViewsClass::createProblemMatrices(const std::vector<PairObj> & obj,
                 ci.Fp2 = Fp2.topRows(2); 
                 ci.Fp1 = Fp1.topRows(2); 
                 ci.F = F.transpose().topLeftCorner(2,2); 
+
+                ci.p_i = p1;
+                ci.p_j = p2;
+                PRINT_VECTOR3D("p1", p1);
+                PRINT_VECTOR3D("p2", p2);
+                // std::cout << "p1: [" << p1(0) << "," << p1(1) << "," << std::endl;
+                // std::cout << "p2: " << p2 << std::endl;
+
                 ci.id_1 = id_1; 
                 ci.id_2 = id_2;
                 constr_red_.push_back(ci);
-
         }
-        
         constr_are_created_ = true;
-
 }
 
 // correction: init
@@ -63,25 +69,27 @@ double NViewsClass::initCorrection(Eigen::VectorXd & sol_init,
                                    Eigen::MatrixXd & A, 
                                    Eigen::VectorXd & b)
 {
-        
         A.resize(M_, 2 * N_cams_); 
         b.resize(M_);
-        
+
+        //> Assign A and b to all zeros
         A.setZero(); 
         b.setZero(); 
         
-        
         for (int i=0; i < M_; i++)
         {                
-         
-               
                 A.block<1,2>(i, constr_red_[i].id_1) = constr_red_[i].Fp2.transpose(); 
                 A.block<1,2>(i, constr_red_[i].id_2) = constr_red_[i].Fp1.transpose();
-                
                 b(i) = constr_red_[i].b;
         }
+
+        std::cout << "A = " << std::endl << A << std::endl;
+        std::cout << "b = " << std::endl << b << std::endl;
+        
        
         sol_init.resize(2 * N_cams_);
+
+        //> multiplying A^T is for an overdetermined system
         double error_sol = solveLinearSystemMinNorm(A.transpose() * A, - A.transpose() * b, sol_init);
         
     
@@ -113,7 +121,6 @@ double NViewsClass::refineCorrection(const Eigen::MatrixXd & A0,
                 
                 Vector2 p1 = sol_init.block<2,1>(constr_red_[i].id_1, 0);
                 Vector2 p2 = sol_init.block<2,1>(constr_red_[i].id_2, 0);                
-                
                 
                 C.block<1,2>(i, constr_red_[i].id_1) += p2.transpose() * constr_red_[i].F.transpose(); 
                 C.block<1,2>(i, constr_red_[i].id_2) += p1.transpose() * constr_red_[i].F; 
@@ -190,11 +197,10 @@ NViewsResult NViewsClass::correctObservations(NViewsOptions & options)
         res.max_constr_init = max_constr_val_i; 
         res.sq_constr_init = sq_constr_i;
         if (options.record_constr)
-                {
-                        res.rec_constr.empty(); 
-                        res.rec_constr.push_back(val_constr_i);
-                
-                }
+        {
+                res.rec_constr.empty(); 
+                res.rec_constr.push_back(val_constr_i);
+        }
         
         if (options.debug)
         {
@@ -207,7 +213,7 @@ NViewsResult NViewsClass::correctObservations(NViewsOptions & options)
         double error_lin = 10; 
         Eigen::MatrixXd Cnext = A0; 
         // evaluate stopping condition 
-        // We sop if
+        // We stop if
         // 1. we reach the maximum number of iterations
         // 2. The diff between solutions is less than threshold
 
@@ -230,13 +236,14 @@ NViewsResult NViewsClass::correctObservations(NViewsOptions & options)
                 
                 if (options.debug)
                 {
-                    std::cout << "[CORR] Iteration #" << k_iter; 
-                    std::cout << "            Max constraint: " << max_constr_val_i; 
-                    std::cout << "            Total constraint L1: " << tot_constr_i;
-                    std::cout << "            Total constraint L2: " << sq_constr_i;
-                    std::cout << "            Norm prev solution: " << sol_i.squaredNorm(); 
-                    std::cout << "            Norm new solution: " << sol_next.squaredNorm();
-                    std::cout << "            Diff between solutions: " << diff_sol << std::endl; 
+                    std::cout << "[CORR] Iteration #" << k_iter << std::endl;
+                    std::cout << "   "; PRINT_VECTORXD("Solution", sol_i);
+                    std::cout << "   Max constraint: " << max_constr_val_i << std::endl;
+                    std::cout << "   Total constraint L1: " << tot_constr_i << std::endl;
+                    std::cout << "   Total constraint L2: " << sq_constr_i << std::endl;
+                    std::cout << "   Norm prev solution: " << sol_i.squaredNorm() << std::endl;
+                    std::cout << "   Norm new solution: " << sol_next.squaredNorm() << std::endl;
+                    std::cout << "   Diff between solutions: " << diff_sol << std::endl; 
                    
                 }
 

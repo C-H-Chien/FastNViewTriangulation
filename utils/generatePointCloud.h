@@ -13,24 +13,24 @@ typedef Eigen::Matrix<double, 3, 3> Matrix3;
 typedef Eigen::Matrix<double, 4, 4> Matrix4;
 
 /* Generate random translation */
-using GenerateTranslation = std::function<Vector3(const double max_parallax, const Vector3& direction_parallax)>;
+using GenerateTranslation = std::function<Vector3(const int rand_seed, const double max_parallax, const Vector3& direction_parallax)>;
 /* Generate random rotation */
-using GenerateRotation = std::function<Matrix3(const double max_angle, const Vector3& dir_rot, const Vector3& dir_trans)>;
+using GenerateRotation = std::function<Matrix3(const int rand_seed, const double max_angle, const Vector3& dir_rot, const Vector3& dir_trans)>;
 /* Generate random perturbation for translation */
-using PerturbTranslation = std::function<Vector3(const double max_parallax, const Vector3& direction_parallax)>;
+using PerturbTranslation = std::function<Vector3(const int rand_seed, const double max_parallax, const Vector3& direction_parallax)>;
 /* Generate random perturbation for rotation */
-using PerturbRotation = std::function<Matrix3(const double max_angle, const Matrix3& rot)>;                
+using PerturbRotation = std::function<Matrix3(const int rand_seed, const double max_angle, const Matrix3& rot)>;                
                                
 // generate random translation with the specified norm
-Vector3 generateRandomTranslationDefault( double max_parallax, const Vector3 & dir_parallax);
+Vector3 generateRandomTranslationDefault( int rand_seed, double max_parallax, const Vector3 & dir_parallax);
 // generate random rotation with maxAngle
-Matrix3 generateRandomRotationDefault( double maxAngle, const Vector3 & dir_rot, const Vector3& dir_trans); 
+Matrix3 generateRandomRotationDefault( int rand_seed, double maxAngle, const Vector3 & dir_rot, const Vector3& dir_trans); 
 
 
 // generate random perturbation for translation 
-Vector3 perturbRandomTranslationDefault( double noise, const Vector3 & trans);
+Vector3 perturbRandomTranslationDefault( int rand_seed, double noise, const Vector3 & trans);
 // generate random perturbation for translation 
-Matrix3 perturbRandomRotationDefault( double noise, const Matrix3 & rot); 
+Matrix3 perturbRandomRotationDefault( int rand_seed, double noise, const Matrix3 & rot); 
 
 int generateM2Comb(const int M,
                       Eigen::MatrixXd & comb_idx);            
@@ -71,33 +71,33 @@ struct PCParams
 /* Result of the point cloud generation */
 struct PCRes
 {
-                 EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
                    
-                    // poses 
-                    std::vector<Matrix3> set_rot; 
-                    std::vector<Vector3> set_trans;
-                    
-                    // Observations
-                    std::vector<Eigen::MatrixXd>  obs;  // noisy observations
-                    // 3D world points
-                    Eigen::MatrixXd  points_3D;
-                    
-                    // constructor
-                    /// default
-                    PCRes()
-                    {
-                    points_3D = Eigen::MatrixXd(3, 1); 
-                    obs = {};  
-                    set_rot = {}; 
-                    set_trans = {};                   
-                    }; 
-                     
-                    PCRes(size_t n_points) {
-                    points_3D = Eigen::MatrixXd(3, n_points); 
-                    obs = {};  
-                    set_rot = {}; 
-                    set_trans = {};       
-                    }; 
+   // poses 
+   std::vector<Matrix3> set_rot; 
+   std::vector<Vector3> set_trans;
+   
+   // Observations
+   std::vector<Eigen::MatrixXd>  obs;  // noisy observations
+   // 3D world points
+   Eigen::MatrixXd  points_3D;
+   
+   // constructor
+   /// default
+   PCRes()
+   {
+   points_3D = Eigen::MatrixXd(3, 1); 
+   obs = {};  
+   set_rot = {}; 
+   set_trans = {};                   
+   }; 
+   
+   PCRes(size_t n_points) {
+   points_3D = Eigen::MatrixXd(3, n_points); 
+   obs = {};  
+   set_rot = {}; 
+   set_trans = {};       
+   }; 
         
 }; // end of PCRes  
   
@@ -114,17 +114,17 @@ PCRes generatePointCloud(PCParams & options,
 
 
 /** Some special functions  **/
-Vector3 generateTranslationForward( double max_parallax, const Vector3 & dir_parallax); 
+Vector3 generateTranslationForward( int rand_seed, double max_parallax, const Vector3 & dir_parallax); 
 
-Vector3 generateTranslationStereo( double max_parallax, const Vector3 & dir_parallax);
+Vector3 generateTranslationStereo( int rand_seed, double max_parallax, const Vector3 & dir_parallax);
 
-Vector3 generateTranslationSideways( double max_parallax, const Vector3 & dir_parallax); 
+Vector3 generateTranslationSideways( int rand_seed, double max_parallax, const Vector3 & dir_parallax); 
 
-Vector3 generateTranslationOblique( double max_parallax, const Vector3 & dir_parallax); 
+Vector3 generateTranslationOblique( int rand_seed, double max_parallax, const Vector3 & dir_parallax); 
 
-Vector3 generateOrbitalTranslation( double max_parallax, const Vector3 & dir_parallax); 
+Vector3 generateOrbitalTranslation( int rand_seed, double max_parallax, const Vector3 & dir_parallax); 
 
-Matrix3 generateOrbitalRotation( double max_parallax, const Vector3 & dir_parallax, const Vector3& dir_trans); 
+Matrix3 generateOrbitalRotation( int rand_seed, double max_parallax, const Vector3 & dir_parallax, const Vector3& dir_trans); 
                         
 };  // end of namespace UtilsTwoView
 

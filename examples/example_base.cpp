@@ -24,6 +24,7 @@
 #include <Eigen/Eigenvalues> 
 
 #include <chrono>  // timer
+#include "../include/definitions.hpp"
 
 using namespace std::chrono;
 
@@ -38,17 +39,16 @@ int main(int argc, char** argv)
 
         std::cout << "Example N view triangulation\n"; 
     
-        
         // parameters for estimation
-        double noise = 2.0;
+        double noise = 5.0;
         size_t n_points = 1;
-        double max_parallax = 1.0;  // in meters
+        double max_parallax = 2.0;  // in meters
         double focal_length = 512; 
         size_t size_img = 512;
         double max_side = 8.0;
         double dist_center = 3.0;
         double max_rot = 0.5;
-        int M_cameras = 100;
+        int M_cameras = 4;
           
         std::srand(std::time(nullptr));
 
@@ -77,15 +77,21 @@ int main(int argc, char** argv)
                 
         Eigen::MatrixXd idx_matrix;
         int n_comb = generateM2Comb(M_cameras, idx_matrix);
+        std::cout << "[CH] Number of constraints = " << n_comb << std::endl;
+        std::cout << "[CH] Index matrix = " << std::endl << idx_matrix << std::endl;
+
+        //> Now idx_matrix is a 2xM matrix containing camera indices
         
         // generate correspondences
         std::vector<PairObj> set_corr; 
         set_corr.empty();
-        for (int jj=0; jj<n_comb; jj++)
+        for (int jj = 0; jj < n_comb; jj++)
         {
                 PairObj corr_i; 
                 int id1 = idx_matrix(0, jj); 
                 int id2 = idx_matrix(1, jj); 
+
+                //> Compute relative poses
                 Matrix3 R1 = str_out.set_rot[id1]; 
                 Matrix3 R2 = str_out.set_rot[id2]; 
                 Vector3 t1 = str_out.set_trans[id1]; 
@@ -102,13 +108,14 @@ int main(int argc, char** argv)
                 Vector3 trel = Prel.block<3,1>(0,3);                 
                 trel.normalize();
            
-                
-                
+                //> Compute essential matrices
                 Matrix3 Ess = Matrix3::Identity(); 
                 Matrix3 Tx = Matrix3::Zero(); 
                 Tx << 0, -trel(2), trel(1), trel(2), 0, -trel(0), -trel(1), trel(0), 0; 
                 // fill T
                 Ess = Tx * Rrel;
+
+                //> Fundamental matrices
                 Matrix3 F = iK.transpose() * Ess * iK;
                 // normalize F
                 Eigen::JacobiSVD<Matrix3> svd(F);
@@ -116,19 +123,19 @@ int main(int argc, char** argv)
                 corr_i.id1 = id1; 
                 corr_i.id2 = id2; 
                 corr_i.F = Ess; 
-                
+
+                PRINT_ESSENTIAL(id2, id1, Ess);
+
+                //> OBservations in meters
                 corr_i.p1 = iK * str_out.obs[0].col(id1); 
                 corr_i.p2 = iK * str_out.obs[0].col(id2);     
-                set_corr.push_back(corr_i);        
-                
-                        
+                set_corr.push_back(corr_i);            
         }
         
         // run correction method
         NViewsClass corr_N_view; 
         // 1. Create constraint matrices
         corr_N_view.createProblemMatrices(set_corr, M_cameras); 
-       
        
         // 2. Run correction
         NViewsOptions options_corr; 

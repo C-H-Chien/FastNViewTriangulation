@@ -24,6 +24,7 @@ namespace NViewsTrian
                         Vector3 p1; 
                         Vector3 p2; 
                         Matrix3 F; 
+                        Matrix3 K;
                         
                         PairObj(){};
                         
@@ -44,6 +45,8 @@ namespace NViewsTrian
                         Eigen::Vector2d Fp1 = Eigen::Vector2d::Zero(); 
                         int id_1 = 0; 
                         int id_2 = 0;
+                        Eigen::Vector3d p_i;
+                        Eigen::Vector3d p_j;
                         Constr2View(){};
                 };  // end of struct for constraints
 

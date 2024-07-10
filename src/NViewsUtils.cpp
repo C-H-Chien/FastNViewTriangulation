@@ -71,8 +71,7 @@ double solveLinearSystemMinNorm(const Eigen::MatrixXd & A,
         
         Eigen::VectorXd y_sol;
         auto start_t_init = high_resolution_clock::now();
-        Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod(A.rows(),
-                                                A.cols());
+        Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod(A.rows(), A.cols());
         cod.setThreshold(tol_rank);
         cod.compute(A);
         auto time_init = duration_cast<nanoseconds>(high_resolution_clock::now() - start_t_init);
