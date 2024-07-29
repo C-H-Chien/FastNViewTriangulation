@@ -9,7 +9,7 @@
 #include <iostream>
 #include <iomanip>
 #include <random>
-#include "../include/definitions.hpp"
+#include "../include/definitions.h"
 
 #define PI 3.1415927
 
@@ -122,9 +122,9 @@ PCRes generatePointCloud(PCParams & options,
          }  // end: for each point
                 
                 
-        // Previous pose
-        res.set_rot.empty(); 
-        res.set_trans.empty();
+        //> Previous pose
+        // res.set_rot.empty(); 
+        // res.set_trans.empty();
         
         for (int j=0; j < options.M_cameras; j++)
         {
@@ -151,7 +151,7 @@ PCRes generatePointCloud(PCParams & options,
         
         
         /** 3. GENERATE CORRESPONDENCES **/
-        res.obs.empty();
+        // res.obs.empty();
                 
 
         for (int i=0; i < options.N_points; i++)

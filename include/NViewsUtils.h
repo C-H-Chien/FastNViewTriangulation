@@ -6,7 +6,7 @@
 #include <vector>
 
 // include types
-#include "NViewsTypes.h"
+#include "../include/NViewsTypes.h"
 
 namespace NViewsTrian{
                         
@@ -32,6 +32,12 @@ double triangulateNPoint(const std::vector<Eigen::Matrix4d> & proj_s,
                          const std::vector<Eigen::Vector3d> & obs_s, 
                          Eigen::Vector3d & P_3d, 
                          Eigen::VectorXd & depths);
+
+//> Added by CH: reproject from a common triangulated points
+std::vector<double> reproject_to_images(const std::vector<Eigen::Matrix4d> & proj_s,
+                                        const std::vector<Eigen::Vector3d> & obs_s,
+                                        const Eigen::Matrix3d K, 
+                                        Eigen::Vector3d & P_3d );
 
 double solveLinearSystemMinNormIt(const Eigen::MatrixXd & A, 
                                   const Eigen::VectorXd & b,

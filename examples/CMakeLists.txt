@@ -19,14 +19,8 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 find_package(Ceres REQUIRED)
 include_directories(${CERES_INCLUDE_DIRS})
 
-
 add_library(exp_gen ../utils/generatePointCloud.h ../utils/generatePointCloud.cpp)
-
-
 add_library(exp_ceres ../utils/ceresSolver.h ../utils/ceresSolver.cpp)
-
-
-
 
 # Basic example
 add_executable(example_base ${CMAKE_CURRENT_SOURCE_DIR}/example_base.cpp)

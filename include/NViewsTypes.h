@@ -47,6 +47,9 @@ namespace NViewsTrian
                         int id_2 = 0;
                         Eigen::Vector3d p_i;
                         Eigen::Vector3d p_j;
+                        Eigen::Vector2d block_x0Ak_p1;
+                        Eigen::Vector2d block_x0Ak_p2;
+                        double block_x0Akx0;
                         Constr2View(){};
                 };  // end of struct for constraints
 

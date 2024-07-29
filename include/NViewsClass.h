@@ -7,7 +7,7 @@
 
 // include types
 #include "NViewsTypes.h"
-
+#include "definitions.h"
 
 namespace NViewsTrian
 {
@@ -19,7 +19,7 @@ namespace NViewsTrian
                 int max_iters = 5; 
                 double max_constr = 1e-10; 
                 double max_tot_constr = 1e-09;   
-                double max_diff_sol = 3e-10;     
+                double max_diff_sol = DIFF_CONSECUTIVE_SOLS_THRESH;     
         
                 bool save_val_constr = false; // record the final values
                 bool record_constr = false;  // record all the values
@@ -76,6 +76,9 @@ namespace NViewsTrian
                         /* Create problem matrices */
                         void createProblemMatrices(const std::vector<PairObj> & obj,
                                                    const int N_cams);
+
+                        //> Get k-th block of (2a_k^T + 2 x_0^T A_k) vector and (b_k - x_0^T A_k x_0) vector
+                        void getInitialVectors( Eigen::Matrix3d F, Eigen::Vector2d pert_p1, Eigen::Vector2d pert_p2 );
                                         
                                         
                         /* Initialize the solution sol_init */
@@ -96,12 +99,19 @@ namespace NViewsTrian
                         void getConstrRed(std::vector<Constr2View> &C){ C = constr_red_;};
                         
                         int checkOpt(const Eigen::VectorXd & sol_init, double & time_opt, int &, int & ); 
+
+                        //> return true/false certified globally optimal solution
+                        bool certified_global_optimum = false;
                         
                 private:
                         int M_;  // number constraints
                         int N_cams_;   // number cameras
                         std::vector<Constr2View> constr_red_;      // reduced constraints
                         bool constr_are_created_;  // true if the constraints are done
+
+                        //> [CH] block vectors with generic initial corrections (perturbations)
+                        Eigen::Vector2d block_x0_Ak_p1, block_x0_Ak_p2;
+                        double block_x0Akx0;
                 
         };  // end of main class
 

@@ -24,7 +24,7 @@
 #include <Eigen/Eigenvalues> 
 
 #include <chrono>  // timer
-#include "../include/definitions.hpp"
+#include "../include/definitions.h"
 
 using namespace std::chrono;
 
@@ -48,7 +48,7 @@ int main(int argc, char** argv)
         double max_side = 8.0;
         double dist_center = 3.0;
         double max_rot = 0.5;
-        int M_cameras = 4;
+        int M_cameras = 3;
           
         std::srand(std::time(nullptr));
 
@@ -79,6 +79,19 @@ int main(int argc, char** argv)
         int n_comb = generateM2Comb(M_cameras, idx_matrix);
         std::cout << "[CH] Number of constraints = " << n_comb << std::endl;
         std::cout << "[CH] Index matrix = " << std::endl << idx_matrix << std::endl;
+
+        //> TEST
+        std::cout << str_out.obs[0].col(0) << std::endl;
+        std::cout << str_out.obs[0].col(1) << std::endl;
+
+        std::cout << str_out.set_rot[0] << std::endl;
+        std::cout << str_out.set_trans[0] << std::endl;
+        std::cout << str_out.set_rot[1] << std::endl;
+        std::cout << str_out.set_trans[1] << std::endl;
+        std::cout << str_out.set_rot[2] << std::endl;
+        std::cout << str_out.set_trans[2] << std::endl;
+        std::cout << K << std::endl;
+
 
         //> Now idx_matrix is a 2xM matrix containing camera indices
         
@@ -128,7 +141,14 @@ int main(int argc, char** argv)
 
                 //> OBservations in meters
                 corr_i.p1 = iK * str_out.obs[0].col(id1); 
-                corr_i.p2 = iK * str_out.obs[0].col(id2);     
+                corr_i.p2 = iK * str_out.obs[0].col(id2);
+
+                std::cout << "Indices:" << std::endl << "(" << corr_i.id1 << ", " << corr_i.id2 << ")" << std::endl;
+                std::cout << "Essential matrix:" << std::endl << corr_i.F << std::endl;
+                std::cout << "Feature point pair:" << std::endl << "[" << corr_i.p1(0) << ", " << corr_i.p1(1) << ", " << corr_i.p1(2) << "]" << std::endl;
+                std::cout << "[" << corr_i.p2(0) << ", " << corr_i.p2(1) << ", " << corr_i.p2(2) << "]" << std::endl;
+                printf("==========================================\n");
+
                 set_corr.push_back(corr_i);            
         }
         
@@ -146,7 +166,7 @@ int main(int argc, char** argv)
         // Show results
         corr_N_view.printResult(res_corr); 
         
-       
+        bool certified_global_optimum = corr_N_view.certified_global_optimum;
  
         // Matrix projections
         std::vector<Matrix4> proj_s; 
@@ -196,18 +216,18 @@ int main(int argc, char** argv)
         Eigen::VectorXd depths_ref; 
         double error_ref = triangulateNPoint(proj_s, obs_ref, P_ref, depths_ref);
                                                  
-        std::cout << "Number constraints: " << n_comb << std::endl;
-        std::cout << "Error linear: " << error_lin << std::endl; 
-        std::cout << "error init: " << error_init << std::endl; 
+        // std::cout << "Number constraints: " << n_comb << std::endl;
+        // std::cout << "Error linear: " << error_lin << std::endl; 
+        // std::cout << "error init: " << error_init << std::endl; 
         std::cout << "Error final: " << error_ref << std::endl;
-
+        std::cout << "Is solution a global optimum? " << (certified_global_optimum ? std::string("Yes") : std::string("No")) << std::endl;
         
-        std::cout << "P3d:\n" << str_out.points_3D.col(0) << std::endl;
-        std::cout << "P linear:\n" << P_lin << std::endl;
-        std::cout << "P init:\n" << P_init << std::endl;
-        std::cout << "P ref:\n" << P_ref << std::endl;
+        // std::cout << "P3d:\n" << str_out.points_3D.col(0) << std::endl;
+        // std::cout << "P linear:\n" << P_lin << std::endl;
+        // std::cout << "P init:\n" << P_init << std::endl;
+        // std::cout << "P ref:\n" << P_ref << std::endl;
         
-        
+#if RUN_CERES_SOLVER_ON
         /** Run ceres **/
         std::vector<std::pair<Eigen::Matrix<double, 3, 4>,Eigen::Vector2d>> vector_pair_ceres_data; 
         vector_pair_ceres_data.reserve(M_cameras); 
@@ -227,17 +247,15 @@ int main(int argc, char** argv)
              
                 std::pair<Eigen::Matrix<double, 3, 4>,Eigen::Vector2d> pair_i(P1, pt.topRows(2)); 
                 vector_pair_ceres_data.push_back(pair_i);                
-        }
-  
+        }  
         auto start_ceres = high_resolution_clock::now();
         Eigen::Vector3d P_ceres = CeresSolver::Triangulate(vector_pair_ceres_data, P_lin); 
         auto time_ceres = duration_cast<nanoseconds>(high_resolution_clock::now() - start_ceres);
         
-        std::cout << "Point 3D from ceres:\n" << P_ceres << std::endl; 
-        std::cout << "Time ceres: " << (double) time_ceres.count() << std::endl;
-        
-                             
-                                
+        // std::cout << "Point 3D from ceres:\n" << P_ceres << std::endl; 
+        // std::cout << "Time ceres: " << (double) time_ceres.count() << std::endl;
+#endif    
+                         
         return 0;
 
 }  // end of main fcn

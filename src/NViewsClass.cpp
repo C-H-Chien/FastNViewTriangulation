@@ -5,31 +5,46 @@
 #include <sstream>
 
 // include types
-#include "NViewsTypes.h"
+#include "../include/NViewsTypes.h"
 // utils
-#include "NViewsUtils.h"
+#include "../include/NViewsUtils.h"
 // header
-#include "NViewsClass.h"
+#include "../include/NViewsClass.h"
 // certifier 
-#include "NViewsCertifier.h"
+#include "../include/NViewsCertifier.h"
 
 #include <chrono>  // timer
 #include <cstring>
-#include "../include/definitions.hpp"
+#include "../include/definitions.h"
 
 using namespace std::chrono;
 
 namespace NViewsTrian
 {
+
+//> produce terms with perturbation for initial correction guess
+void NViewsClass::getInitialVectors( Eigen::Matrix3d F, Eigen::Vector2d pert_p1, Eigen::Vector2d pert_p2 ) {
+
+        block_x0_Ak_p2 = F.transpose().topLeftCorner(2,2) * pert_p2;
+        block_x0_Ak_p1 = F.topLeftCorner(2,2) * pert_p1;
+        block_x0Akx0 = block_x0_Ak_p2.dot( pert_p2 );
+}
+
 // create problem matrices
 void NViewsClass::createProblemMatrices(const std::vector<PairObj> & obj,
                                         const int N_cams)
 {
-        constr_red_.empty(); 
+        // constr_red_.empty(); 
         
         M_ = obj.size();
         N_cams_ = N_cams;
         int s_constr = 2 * N_cams_ + 1;
+        Eigen::Vector2d perturb_p1;
+        Eigen::Vector2d perturb_p2;
+
+        //> Zero initial perturbations
+        perturb_p1.setZero();
+        perturb_p2.setZero();
 
         //> M_ is the # of constraints
         for (int i = 0; i < M_; i++)
@@ -49,13 +64,14 @@ void NViewsClass::createProblemMatrices(const std::vector<PairObj> & obj,
                 ci.Fp2 = Fp2.topRows(2); 
                 ci.Fp1 = Fp1.topRows(2); 
                 ci.F = F.transpose().topLeftCorner(2,2); 
+                // ci.block_x0Ak_p1 = block_x0_Ak_p1;
+                // ci.block_x0Ak_p2 = block_x0_Ak_p2;
+                // ci.block_x0Akx0 = block_x0Akx0;
 
                 ci.p_i = p1;
                 ci.p_j = p2;
-                PRINT_VECTOR3D("p1", p1);
-                PRINT_VECTOR3D("p2", p2);
-                // std::cout << "p1: [" << p1(0) << "," << p1(1) << "," << std::endl;
-                // std::cout << "p2: " << p2 << std::endl;
+                // PRINT_VECTOR3D("p1", p1);
+                // PRINT_VECTOR3D("p2", p2);
 
                 ci.id_1 = id_1; 
                 ci.id_2 = id_2;
@@ -78,27 +94,21 @@ double NViewsClass::initCorrection(Eigen::VectorXd & sol_init,
         
         for (int i=0; i < M_; i++)
         {                
-                A.block<1,2>(i, constr_red_[i].id_1) = constr_red_[i].Fp2.transpose(); 
-                A.block<1,2>(i, constr_red_[i].id_2) = constr_red_[i].Fp1.transpose();
-                b(i) = constr_red_[i].b;
+                A.block<1,2>(i, constr_red_[i].id_1) = constr_red_[i].Fp2.transpose();// + constr_red_[i].block_x0Ak_p2.transpose(); 
+                A.block<1,2>(i, constr_red_[i].id_2) = constr_red_[i].Fp1.transpose();// + constr_red_[i].block_x0Ak_p1.transpose();
+                b(i) = constr_red_[i].b;// + constr_red_[i].block_x0Akx0;
         }
 
-        std::cout << "A = " << std::endl << A << std::endl;
-        std::cout << "b = " << std::endl << b << std::endl;
+        // std::cout << "A = " << std::endl << A << std::endl;
+        // std::cout << "b = " << std::endl << b << std::endl;
         
-       
         sol_init.resize(2 * N_cams_);
 
         //> multiplying A^T is for an overdetermined system
         double error_sol = solveLinearSystemMinNorm(A.transpose() * A, - A.transpose() * b, sol_init);
         
-    
         return error_sol;
-        
 }
-
-
-
 
 // correction ref
 double NViewsClass::refineCorrection(const Eigen::MatrixXd & A0, 
@@ -187,18 +197,14 @@ NViewsResult NViewsClass::correctObservations(NViewsOptions & options)
             std::cout << "[CORR] Maximum value constraint for initial guess: " << max_constr_val_i << std::endl; 
             std::cout << "[CORR] L-1 norm constraints for initial guess: " << tot_constr_i << std::endl;   
         }
-            
 
-        
-        
-        
         NViewsResult res = NViewsResult(); 
         res.tot_constr_init = tot_constr_i; 
         res.max_constr_init = max_constr_val_i; 
         res.sq_constr_init = sq_constr_i;
         if (options.record_constr)
         {
-                res.rec_constr.empty(); 
+                // res.rec_constr.empty(); 
                 res.rec_constr.push_back(val_constr_i);
         }
         
@@ -283,7 +289,7 @@ NViewsResult NViewsClass::correctObservations(NViewsOptions & options)
         NCertRes res_cert = cert_obj.checkOptimality(sol_i, Cnext); 
         auto time_cert = duration_cast<nanoseconds>(high_resolution_clock::now() - start_t_cert);
                 
-        
+        certified_global_optimum = cert_obj.is_a_global_optimum;
         
         /* Save results */
         

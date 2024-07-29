@@ -5,10 +5,10 @@
 #include <sstream>
 
 // include types
-#include "NViewsTypes.h"
+#include "../include/NViewsTypes.h"
 
 // include header
-#include "NViewsUtils.h"
+#include "../include/NViewsUtils.h"
 
 #define EIGEN_USE_LAPACKE_STRICT
 // for eigendecomposition
@@ -91,10 +91,6 @@ double solveLinearSystemMinNorm(const Eigen::MatrixXd & A,
         return error_sol;
 }        
 
-
-
-
-
 double triangulateNPoint(const std::vector<Eigen::Matrix<double, 3, 4>> & proj_s,
                          const std::vector<Eigen::Vector3d> & obs_s, 
                          Eigen::Vector3d & P_3d, 
@@ -115,7 +111,8 @@ double triangulateNPoint(const std::vector<Eigen::Matrix<double, 3, 4>> & proj_s
         
         return (triangulateNPoint(P4, obs_s, P_3d, depths));
 
-}             
+}
+
 // triangulate point
 double triangulateNPoint(const std::vector<Matrix4> & proj_s,
                          const std::vector<Eigen::Vector3d> & obs_s, 
@@ -150,7 +147,26 @@ double triangulateNPoint(const std::vector<Matrix4> & proj_s,
         return error_lin;
 }
 
-
+std::vector<double> reproject_to_images(const std::vector<Eigen::Matrix4d> & proj_s,
+                                        const std::vector<Eigen::Vector3d> & obs_s,
+                                        const Eigen::Matrix3d K, 
+                                        Eigen::Vector3d & P_3d ) 
+{
+        int N_cams = proj_s.size();
+        Eigen::Matrix3d R;
+        Eigen::Vector3d T;
+        Eigen::Vector3d P_cam, reproj_pt;
+        std::vector<double> reprojected_errors;
+        for (int i = 0; i < N_cams; i++) {
+                // Eigen::Matrix4d P = proj_s[i];
+                R = proj_s[i].block<3,3>(0,0);
+                T = proj_s[i].block<3,1>(0,3);
+                P_cam = K * (R*P_3d + T);
+                reproj_pt = P_cam / P_cam(2);
+                reprojected_errors.push_back( (obs_s[i] - reproj_pt).norm() );
+        }
+        return reprojected_errors;
+}
 
 }   // end of namespace NViewtrian
 

@@ -1,6 +1,12 @@
 //> Some macro definitions
 
-#define FIX_RANDOMNESS                  (false)
+//> General Settings
+#define FIX_RANDOMNESS                  (true)
+#define RUN_CERES_SOLVER_ON             (false)
+
+//> Thresholds Settings
+#define CERTIFY_THRESH                  (-1e-09)   //> -1e-09 accroding to the paper. Negative because of numerical error.
+#define DIFF_CONSECUTIVE_SOLS_THRESH    (3e-10)    //> 3e-10 according to the paper
 
 #define LOG_INFOR_MESG(info_msg)        printf("\033[1;32m[INFO] %s\033[0m\n", std::string(info_msg).c_str() );
 #define LOG_FILE_ERROR(err_msg)         printf("\033[1;31m[ERROR] File %s not found!\033[0m\n", std::string(err_msg).c_str() );

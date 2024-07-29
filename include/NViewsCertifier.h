@@ -6,8 +6,8 @@
 #include <vector>
 
 // include types
-#include "NViewsTypes.h"
-
+#include "../include/NViewsTypes.h"
+#include "../include/definitions.h"
 
 namespace NViewsTrian
 {
@@ -54,7 +54,10 @@ namespace NViewsTrian
                                                  const Eigen::MatrixXd & C);
                         
                         /* Print results */
-                        void printResult(const NCertRes & res); 
+                        void printResult(const NCertRes & res);
+
+                        //> Indicate whether the solution is a globally optimal solution
+                        bool is_a_global_optimum; 
                         
                 private:
                         std::vector<Constr2View> constr_red_;  // constraints 

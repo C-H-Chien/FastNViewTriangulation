@@ -5,13 +5,13 @@
 #include <sstream>
 
 // include types
-#include "NViewsTypes.h"
+#include "../include/NViewsTypes.h"
 
 // include utils
-#include "NViewsUtils.h"
+#include "../include/NViewsUtils.h"
 
 // include headers
-#include "NViewsCertifier.h"
+#include "../include/NViewsCertifier.h"
 
 // for eigendecomposition
 #include <eigen3/Eigen/Dense>
@@ -161,11 +161,14 @@ NCertRes NViewCertClass::checkOptimality(const Eigen::VectorXd & sol,
         NCertRes res; 
         res.min_eig = min_eigen; 
         res.error_mult = error_lin; 
+
+        //> Check whether the solution is a global optimum
+        is_a_global_optimum = (min_eigen >= CERTIFY_THRESH) ? (true) : (false);
         
         res.time_mult = (double) time_mult.count(); 
         res.time_hess = (double) time_hess.count();
 
-        printResult( res );
+        // printResult( res );
         
         if (debug_)
         {
