@@ -4,6 +4,11 @@
 //  Garcia-Salguero, Mercedes, and Javier Gonzalez-Jimenez. "Certifiable solver for real-time N-view triangulation." 
 //  IEEE Robotics and Automation Letters 8, no. 4 (2023): 1999-2005.
 //
+//> Build this code in the matlab command window:
+//  $ mex examples/fast_multiview_triangulation_mex.cpp src/NViewsCertifier.cpp src/NViewsClass.cpp src/NViewsUtils.cpp ...
+//    utils/generatePointCloud.cpp -I/path/to/eigen3
+//  [Note] the path to the eigen3 library depends on the directory where you install eigen3, e.g., -I/usr/include/eigen3/
+//
 //> (c) LEMS, Brown University
 //> Chiang-Heng Chien (chiang-heng_chien@brown.edu)
 // =============================================================================================================================
@@ -20,6 +25,9 @@
 
 #include <eigen3/Eigen/Dense>
 #include <Eigen/Eigenvalues>  
+
+//> Macros
+#define MESG_IN_MATLAB  (true)
 
 using namespace NViewsTrian;
 
@@ -62,6 +70,8 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] ) {
         //> feature locations (point observations)
         Eigen::Vector3d point = Eigen::Vector3d::Zero();
         point << Observation_Locations[(i)*2 + 0], Observation_Locations[(i)*2 + 1], 1.0;
+        if (mexFunction_debug) 
+            std::cout << "Obs" << i << " = (" << Observation_Locations[(i)*2 + 0] << ", " << Observation_Locations[(i)*2 + 1] << ")" << std::endl;
         obs_i.col(i) = point;
         feature_track_.Locations.push_back(point);
 
@@ -144,7 +154,8 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] ) {
  
     //> (3) Make corrections to the observed feature track point locations
     std::vector<Matrix4> proj_s; 
-    std::vector<Vector3> Corrected_Features;  
+    std::vector<Vector3> Corrected_Features_in_Metric;
+    // std::vector<Vector3> Corrected_Features_in_Pixels;
         
     for (int jc=0; jc < M_cameras;jc++) {
         //> Projection matrix
@@ -158,35 +169,38 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] ) {
         //> update observation by the correction from N-view triangulation 
         Vector3 pt = inverse_K * feature_track_.Locations[jc];  
         Vector3 delta_ref; 
-        delta_ref << Feature_Corrections.sol_final( jc*2), Feature_Corrections.sol_final(jc*2 + 1), 0; 
-                
-        Corrected_Features.push_back(pt + delta_ref); 
+        delta_ref << Feature_Corrections.sol_final( jc*2), Feature_Corrections.sol_final(jc*2 + 1), 0;
+
+        Corrected_Features_in_Metric.push_back( pt + delta_ref );
+        feature_track_.Optimal_Locations.push_back( K * Corrected_Features_in_Metric[jc] ); 
     }
 
     //> (4) Triangulate corrected points to a common 3D point via linear triangulation and reproject to the images
     Vector3 Gamma_Corrected;    //> 3D point under the world coordinate
     Eigen::VectorXd Depths_Corrected; 
-    double Linearity_Err = triangulateNPoint(proj_s, Corrected_Features, Gamma_Corrected, Depths_Corrected);
-    for (int i = 0; i < feature_track_.Length; i++) {
-        feature_track_.Optimal_Locations.push_back(K * Corrected_Features[i]);
-    }
+    double Linearity_Err = triangulateNPoint(proj_s, Corrected_Features_in_Metric, Gamma_Corrected, Depths_Corrected);
+    // for (int i = 0; i < feature_track_.Length; i++) {
+    //     feature_track_.Optimal_Locations.push_back(K * Corrected_Features[i]);
+    // }
     std::vector<double> Reprojection_Errors = reproject_to_images( proj_s, feature_track_.Locations, K, Gamma_Corrected );
 
     //> Output reprojection errors to MATLAB
     if ( nl > 0 ) {
         //> 1) Corrected feature track locations
-        const mwSize feature_location_dim[2] = { mwSize(feature_track_.Length), mwSize(2) };
+        const mwSize feature_location_dim[2] = { mwSize(2), mwSize(feature_track_.Length) };
         pl[0] = mxCreateNumericArray(2, feature_location_dim, mxDOUBLE_CLASS, mxREAL);
         double* output_corrected_features = (double*) mxGetData(pl[0]);
-        for (int i = 0; i < Corrected_Features.size(); i++) {
-            (output_corrected_features)[(i)*2 + 0] = Corrected_Features[i](0);
-            (output_corrected_features)[(i)*2 + 1] = Corrected_Features[i](1);
+        for (int i = 0; i < Corrected_Features_in_Metric.size(); i++) {
+            (output_corrected_features)[(i)*2 + 0] = feature_track_.Optimal_Locations[i](0);
+            (output_corrected_features)[(i)*2 + 1] = feature_track_.Optimal_Locations[i](1);
+            if (mexFunction_debug) 
+                std::cout << "Corrected Features p" << i << " = (" << feature_track_.Optimal_Locations[i](0) << ", " << feature_track_.Optimal_Locations[i](1) << ")" << std::endl;
         }
         //> 2) reprojection errors
         const mwSize reproject_err_dim[1] = { mwSize(feature_track_.Length) };
         pl[1] = mxCreateNumericArray(1, reproject_err_dim, mxDOUBLE_CLASS, mxREAL);
         double* output_reproj_errors = (double*) mxGetData(pl[1]);
-        for (int i = 0; i < Corrected_Features.size(); i++) {
+        for (int i = 0; i < Corrected_Features_in_Metric.size(); i++) {
             (output_reproj_errors)[i] = Reprojection_Errors[i];
         }
         mexPrintf("[CPP] Complete N-view Triangulation.\n");
