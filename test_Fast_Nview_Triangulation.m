@@ -29,13 +29,12 @@ Ts = [t1; t2; t3];
 
 %> 3) Run multiview triangulation from mexFunction in CPP code
 debug = 0;
-[corrected_features, reproj_errs] = fast_multiview_triangulation_mex(Feature_Track, K_, Rs, Ts, debug);
+[corrected_features, reproj_errs, is_sol_global_optimal, ~] = ...
+    fast_multiview_triangulation_mex(Feature_Track, K_, Rs, Ts, debug);
 
+N = size(Feature_Track, 2);
 %> Check if the returned reprojection erros are correct and making senses
 for i = 1:N
     assert(abs(norm(Feature_Track(:,i) - corrected_features(:,i)) - reproj_errs(i)) < 1e-8);
     assert(abs(reproj_errs(i)) < 5);
 end
-
-%> average reprojection error
-avg_reproj_err = mean(reproj_errs);

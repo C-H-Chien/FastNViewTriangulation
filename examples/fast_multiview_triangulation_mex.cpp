@@ -27,7 +27,7 @@
 #include <Eigen/Eigenvalues>  
 
 //> Macros
-#define MESG_IN_MATLAB  (true)
+#define VERBOSE (false)
 
 using namespace NViewsTrian;
 
@@ -150,12 +150,14 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] ) {
     options_corr.debug           = false; 
     NViewsResult Feature_Corrections = corr_N_view.correctObservations(options_corr);
     bool certified_global_optimum = corr_N_view.certified_global_optimum;
+#if VERBOSE
     std::cout << "Is solution a global optimum? " << (certified_global_optimum ? std::string("Yes") : std::string("No")) << std::endl;
+#endif
  
     //> (3) Make corrections to the observed feature track point locations
     std::vector<Matrix4> proj_s; 
     std::vector<Vector3> Corrected_Features_in_Metric;
-    // std::vector<Vector3> Corrected_Features_in_Pixels;
+    std::vector<Vector3> Observed_Features_in_Metric;
         
     for (int jc=0; jc < M_cameras;jc++) {
         //> Projection matrix
@@ -172,17 +174,20 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] ) {
         delta_ref << Feature_Corrections.sol_final( jc*2), Feature_Corrections.sol_final(jc*2 + 1), 0;
 
         Corrected_Features_in_Metric.push_back( pt + delta_ref );
+        Observed_Features_in_Metric.push_back( pt );
         feature_track_.Optimal_Locations.push_back( K * Corrected_Features_in_Metric[jc] ); 
     }
 
     //> (4) Triangulate corrected points to a common 3D point via linear triangulation and reproject to the images
-    Vector3 Gamma_Corrected;    //> 3D point under the world coordinate
-    Eigen::VectorXd Depths_Corrected; 
+    Vector3 Gamma_Corrected;            //> 3D corrected point under the world coordinate
+    Eigen::VectorXd Depths_Corrected;   //> (?)
     double Linearity_Err = triangulateNPoint(proj_s, Corrected_Features_in_Metric, Gamma_Corrected, Depths_Corrected);
-    // for (int i = 0; i < feature_track_.Length; i++) {
-    //     feature_track_.Optimal_Locations.push_back(K * Corrected_Features[i]);
-    // }
     std::vector<double> Reprojection_Errors = reproject_to_images( proj_s, feature_track_.Locations, K, Gamma_Corrected );
+
+    //> Used for uncertainty measurements
+    Vector3 Gamma_Observed;             //> 3D observed point under the world coordinate
+    Eigen::VectorXd Depths_Observed;    //> (?)
+    triangulateNPoint(proj_s, Observed_Features_in_Metric, Gamma_Observed, Depths_Observed);
 
     //> Output reprojection errors to MATLAB
     if ( nl > 0 ) {
@@ -203,7 +208,24 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] ) {
         for (int i = 0; i < Corrected_Features_in_Metric.size(); i++) {
             (output_reproj_errors)[i] = Reprojection_Errors[i];
         }
+        //> 3) whether the solution is a global optimum
+        const mwSize is_sol_global_optimal_dim[1] = { mwSize(1) };
+        pl[2] = mxCreateNumericArray(1, is_sol_global_optimal_dim, mxDOUBLE_CLASS, mxREAL);
+        double* output_is_sol_global_optimal = (double*) mxGetData(pl[2]);
+        output_is_sol_global_optimal[0] = (double)(certified_global_optimum);
+
+        // pl[2] = mxCreateDoubleScalar( (double)certified_global_optimum );
+        //> 4) triangulated 3D point, both corrected and observed
+        const mwSize Gamma_dim[2] = { mwSize(3), mwSize(2) };
+        pl[3] = mxCreateNumericArray(2, Gamma_dim, mxDOUBLE_CLASS, mxREAL);
+        double* output_Gamma = (double*) mxGetData(pl[3]);
+        for (int i = 0; i < 3; i++) {
+            output_Gamma[i]     = Gamma_Corrected[i];
+            output_Gamma[i + 3] = Gamma_Observed[i];
+        }
+#if VERBOSE
         mexPrintf("[CPP] Complete N-view Triangulation.\n");
+#endif
     }
     else {
         mexErrMsgTxt("No output on the MATLAB side is given!");
