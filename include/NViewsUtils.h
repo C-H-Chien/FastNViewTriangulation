@@ -37,7 +37,8 @@ double triangulateNPoint(const std::vector<Eigen::Matrix4d> & proj_s,
 std::vector<double> reproject_to_images(const std::vector<Eigen::Matrix4d> & proj_s,
                                         const std::vector<Eigen::Vector3d> & obs_s,
                                         const Eigen::Matrix3d K, 
-                                        Eigen::Vector3d & P_3d );
+                                        Eigen::Vector3d & P_3d,
+                                        bool mexFunction_debug );
 
 double solveLinearSystemMinNormIt(const Eigen::MatrixXd & A, 
                                   const Eigen::VectorXd & b,

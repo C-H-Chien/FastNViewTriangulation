@@ -150,7 +150,8 @@ double triangulateNPoint(const std::vector<Matrix4> & proj_s,
 std::vector<double> reproject_to_images(const std::vector<Eigen::Matrix4d> & proj_s,
                                         const std::vector<Eigen::Vector3d> & obs_s,
                                         const Eigen::Matrix3d K, 
-                                        Eigen::Vector3d & P_3d ) 
+                                        Eigen::Vector3d & P_3d,
+                                        bool mexFunction_debug ) 
 {
         int N_cams = proj_s.size();
         Eigen::Matrix3d R;
@@ -163,6 +164,9 @@ std::vector<double> reproject_to_images(const std::vector<Eigen::Matrix4d> & pro
                 T = proj_s[i].block<3,1>(0,3);
                 P_cam = K * (R*P_3d + T);
                 reproj_pt = P_cam / P_cam(2);
+                if (mexFunction_debug) {
+                        std::cout << "Reprojected point = (" << reproj_pt[0] << ", " << reproj_pt[1] << ", " << reproj_pt[2] << ")" << std::endl;
+                }
                 reprojected_errors.push_back( (obs_s[i] - reproj_pt).norm() );
         }
         return reprojected_errors;

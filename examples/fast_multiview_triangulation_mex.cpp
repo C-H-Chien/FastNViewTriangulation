@@ -81,6 +81,10 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] ) {
              rotations[(i)*9 + 3], rotations[(i)*9 + 4], rotations[(i)*9 + 5], \
              rotations[(i)*9 + 6], rotations[(i)*9 + 7], rotations[(i)*9 + 8];
         feature_track_.Abs_Rots.push_back(R);
+        if (mexFunction_debug) {
+            std::cout << "R" << i << " =" << std::endl;
+            std::cout << R << std::endl;
+        }
 
         //> absolute translation vectors
         Eigen::Vector3d t = Eigen::Vector3d::Zero();
@@ -112,7 +116,7 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] ) {
         P2.block<3,3>(0,0) = R2; 
         P2.block<3,1>(0,3) = t2;
                 
-        Matrix4 Prel = P2 * P1.inverse(); 
+        Matrix4 Prel = P2.inverse() * P1; 
         Matrix3 Rrel = Prel.block<3,3>(0,0); 
         Vector3 trel = Prel.block<3,1>(0,3);                 
         trel.normalize();
@@ -148,6 +152,7 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] ) {
     NViewsOptions options_corr; 
     options_corr.save_val_constr = false;
     options_corr.debug           = false; 
+    options_corr.max_iters            = 50;
     NViewsResult Feature_Corrections = corr_N_view.correctObservations(options_corr);
     bool certified_global_optimum = corr_N_view.certified_global_optimum;
 #if VERBOSE
@@ -164,8 +169,9 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] ) {
         Matrix3 R = feature_track_.Abs_Rots[jc];  
         Vector3 t = feature_track_.Abs_Transls[jc]; 
         Matrix4 P1 = Matrix4::Identity(); 
-        P1.block<3,3>(0,0) = R; 
-        P1.block<3,1>(0,3) = t;
+        //> Projection matrix: projecting 3D points under a common world coordinate to the camera coordinate
+        P1.block<3,3>(0,0) = R.inverse(); 
+        P1.block<3,1>(0,3) = -R.inverse() * t;
         proj_s.push_back(P1); 
                 
         //> update observation by the correction from N-view triangulation 
@@ -182,7 +188,7 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] ) {
     Vector3 Gamma_Corrected;            //> 3D corrected point under the world coordinate
     Eigen::VectorXd Depths_Corrected;   //> (?)
     double Linearity_Err = triangulateNPoint(proj_s, Corrected_Features_in_Metric, Gamma_Corrected, Depths_Corrected);
-    std::vector<double> Reprojection_Errors = reproject_to_images( proj_s, feature_track_.Locations, K, Gamma_Corrected );
+    std::vector<double> Reprojection_Errors = reproject_to_images( proj_s, feature_track_.Locations, K, Gamma_Corrected, mexFunction_debug );
 
     //> Used for uncertainty measurements
     Vector3 Gamma_Observed;             //> 3D observed point under the world coordinate
