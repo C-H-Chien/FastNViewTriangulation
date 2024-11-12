@@ -14,14 +14,14 @@ endif()
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 
-find_package(Ceres REQUIRED)
-include_directories(${CERES_INCLUDE_DIRS})
+#find_package(Ceres REQUIRED)
+#include_directories(${CERES_INCLUDE_DIRS})
 
 
 add_library(exp_help_test experimentsHelper.h ../utils/generatePointCloud.h experimentsHelper.cpp ../utils/generatePointCloud.cpp)
 
 
-add_library(exp_ceres_test ../utils/ceresSolver.h ../utils/ceresSolver.cpp)
+#add_library(exp_ceres_test ../utils/ceresSolver.h ../utils/ceresSolver.cpp)
 
 
 
@@ -30,8 +30,8 @@ add_executable(generic_test ${CMAKE_CURRENT_SOURCE_DIR}/generic_test.cpp)
 target_link_libraries(generic_test 
                         NViewsTrian 
                         exp_help_test
-                        exp_ceres
-                        ${CERES_LIBRARIES}
+                        #exp_ceres
+                        #${CERES_LIBRARIES}
                         )
         
 

@@ -19,13 +19,17 @@
 // data generation
 #include "../utils/generatePointCloud.h"
 // ceres solver
+#if RUN_CERES_SOLVER_ON
 #include "../utils/ceresSolver.h"
+#endif
 
 // for eigen decomposition
 #include <eigen3/Eigen/Dense>
 #include <Eigen/Eigenvalues> 
 
 #include <chrono>  // timer
+
+#include "../include/definitions.h"
 
 using namespace NViewsTrian;
 using namespace std::chrono;
@@ -428,7 +432,7 @@ int main(int argc, char** argv)
                                                         Eigen::VectorXd depths_ref; 
                                                         double error_ref = triangulateNPoint(proj_s, obs_ref, P_ref, depths_ref);
                                                         
-                                                                                                                                                                
+#if RUN_CERES_SOLVER_ON                                                                               
                                                         /** Run ceres **/
                                                         std::vector<std::pair<Eigen::Matrix<double, 3, 4>, Eigen::Vector2d>> vector_pair_ceres_data; 
                                                         vector_pair_ceres_data.reserve(M_cam_i); 
@@ -543,7 +547,7 @@ int main(int argc, char** argv)
                                                         fconstr << res_corr.sq_constr << ",";
                                                         fconstr << res_corr.error_lin << ",";
                                                         fconstr << std::endl;  
-                                                        
+#endif
                                                         
                                                         
                                                 }  // end of each point             
