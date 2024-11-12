@@ -8,7 +8,7 @@
 #include <sstream>
 #include <fstream>  // for the file
 
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 
 using namespace std;
 

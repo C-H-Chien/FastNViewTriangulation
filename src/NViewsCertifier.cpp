@@ -14,7 +14,7 @@
 #include "../include/NViewsCertifier.h"
 
 // for eigendecomposition
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <Eigen/Eigenvalues> 
 
 #include <chrono>  // timer

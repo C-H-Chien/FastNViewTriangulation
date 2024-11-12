@@ -5,7 +5,7 @@
 #include <iostream>
 
 #include <Eigen/Core>
-#include "ceres/ceres.h"
+//#include "ceres/ceres.h"
 
 
 namespace CeresSolver

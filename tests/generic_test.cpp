@@ -24,7 +24,7 @@
 #endif
 
 // for eigen decomposition
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <Eigen/Eigenvalues> 
 
 #include <chrono>  // timer
