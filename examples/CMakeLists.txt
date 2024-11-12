@@ -15,7 +15,6 @@ endif()
 # Add the Eigen include directories
 include_directories(${EIGEN3_INCLUDE_DIR})
 
-
 find_package(Ceres REQUIRED)
 include_directories(${CERES_INCLUDE_DIRS})
 
@@ -24,11 +23,19 @@ add_library(exp_ceres ../utils/ceresSolver.h ../utils/ceresSolver.cpp)
 
 # Basic example
 add_executable(example_base ${CMAKE_CURRENT_SOURCE_DIR}/example_base.cpp)
+add_executable(mwv_triangulation_main ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
+
 target_link_libraries(example_base 
                               NViewsTrian
                               exp_gen          
                               exp_ceres
                               ${CERES_LIBRARIES}
                               )
-                              
+
+target_link_libraries(mwv_triangulation_main 
+                              NViewsTrian
+                              exp_gen          
+                              exp_ceres
+                              ${CERES_LIBRARIES}
+                              )
 
