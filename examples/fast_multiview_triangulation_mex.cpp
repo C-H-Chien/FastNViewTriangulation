@@ -109,16 +109,8 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] ) {
         Matrix3 R2 = feature_track_.Abs_Rots[id2]; 
         Vector3 t1 = feature_track_.Abs_Transls[id1]; 
         Vector3 t2 = feature_track_.Abs_Transls[id2]; 
-        Matrix4 P1 = Matrix4::Identity(); 
-        Matrix4 P2 = Matrix4::Identity(); 
-        P1.block<3,3>(0,0) = R1; 
-        P1.block<3,1>(0,3) = t1;
-        P2.block<3,3>(0,0) = R2; 
-        P2.block<3,1>(0,3) = t2;
-                
-        Matrix4 Prel = P2.inverse() * P1; 
-        Matrix3 Rrel = Prel.block<3,3>(0,0); 
-        Vector3 trel = Prel.block<3,1>(0,3);                 
+        Matrix3 Rrel = R2 * R1.transpose();
+        Vector3 trel = t2 - R2*(R1.transpose())*t1;
         trel.normalize();
                 
         //> Compute essential matrices
@@ -170,10 +162,10 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] ) {
         Vector3 t = feature_track_.Abs_Transls[jc]; 
         Matrix4 P1 = Matrix4::Identity(); 
         //> Projection matrix: projecting 3D points under a common world coordinate to the camera coordinate
-        P1.block<3,3>(0,0) = R.inverse(); 
-        P1.block<3,1>(0,3) = -R.inverse() * t;
+        P1.block<3,3>(0,0) = R; 
+        P1.block<3,1>(0,3) = t;
         proj_s.push_back(P1); 
-                
+
         //> update observation by the correction from N-view triangulation 
         Vector3 pt = inverse_K * feature_track_.Locations[jc];  
         Vector3 delta_ref; 
